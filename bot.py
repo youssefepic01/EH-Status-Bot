@@ -1,37 +1,58 @@
 import os
 import discord
+import requests
 from discord.ext import commands
+from datetime import datetime
 
-# These pull from your GitHub Secrets
+# CONFIGURATION
 TOKEN = os.environ['DISCORD_TOKEN']
 CHANNEL_ID = int(os.environ['DISCORD_CHANNEL_ID'])
+MESSAGE_ID = int(os.environ['DISCORD_MESSAGE_ID'])
+MY_SERVER_ID = "4606-8ef3-aa7adcbe59bc" 
 
-# Basic setup to get the bot online
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
 
+class JoinButton(discord.ui.View):
+    def __init__(self, join_code):
+        super().__init__()
+        url = f"https://www.roblox.com/games/start?placeId=3334450855&launchData={join_code}"
+        self.add_item(discord.ui.Button(label='Join Server', url=url, emoji='🔗', style=discord.ButtonStyle.link))
+
 @bot.event
 async def on_ready():
-    print(f"Logged in as {bot.user}")
-    
-    # 1. Get the channel using the ID from your Secrets
-    channel = bot.get_channel(CHANNEL_ID)
-    
-    if channel:
-        # 2. The bot sends a fresh message that IT owns
-        msg = await channel.send("🚀 **ABR Server Status Initializing...**\nThis message will be updated every 5 minutes.")
-        
-        # 3. This prints the ID into your GitHub Actions console
-        print("\n" + "="*30)
-        print(f"SUCCESS! NEW MESSAGE ID: {msg.id}")
-        print("="*30 + "\n")
-        print("1. Copy the number above.")
-        print("2. Go to GitHub Settings -> Secrets -> Actions.")
-        print("3. Update 'DISCORD_MESSAGE_ID' with this number.")
-    else:
-        print("ERROR: Could not find the channel. Check your DISCORD_CHANNEL_ID secret.")
+    try:
+        response = requests.get("https://api.emergency-hamburg.com/public/servers")
+        all_servers = response.json()
+        target = next((s for s in all_servers if MY_SERVER_ID in s.get('privateServerId', '')), None)
+                
+        if target:
+            players = target.get('currentPlayers', 0)
+            max_p = target.get('maxPlayers', 44)
+            owner = target.get('ownerName', 'medo230y')
+            code = target.get('code', 'TBm2HgcGtf')
 
-    # Close the bot after sending the message
+            embed = discord.Embed(title="🚨 BORDER RP 🚧 🇺🇸", color=0x2ecc71)
+            embed.add_field(name="📶 Status", value="🟢 Online", inline=False)
+            embed.add_field(name="🎮 Players", value=f"`{players} / {max_p}`", inline=True)
+            embed.add_field(name="👑 Owner", value=f"[{owner}](https://www.roblox.com/users/{target.get('ownerId')}/profile)", inline=True)
+            embed.add_field(name="🔗 Server Code", value=f"`{code}`", inline=False)
+            
+            if target.get('ownerProfileUrl'):
+                embed.set_thumbnail(url=target.get('ownerProfileUrl'))
+
+            embed.set_footer(text=f"Last updated: {datetime.now().strftime('%I:%M %p')}")
+
+            channel = bot.get_channel(CHANNEL_ID)
+            msg = await channel.fetch_message(MESSAGE_ID)
+            await msg.edit(content=None, embed=embed, view=JoinButton(code))
+            print("Status Updated Successfully!")
+        else:
+            print("Server not found in API.")
+            
+    except Exception as e:
+        print(f"Error: {e}")
+    
     await bot.close()
 
 bot.run(TOKEN)
