@@ -5,27 +5,34 @@ from discord.ext import commands
 import time
 import asyncio
 
-# CONFIGURATION
+# --- CONFIGURATION (GITHUB SECRETS) ---
 TOKEN = os.environ['DISCORD_TOKEN']
 CHANNEL_ID = int(os.environ['DISCORD_CHANNEL_ID'])
 MESSAGE_ID = int(os.environ['DISCORD_MESSAGE_ID'])
 MY_SERVER_ID = "4606-8ef3-aa7adcbe59bc" 
+JOIN_CODE = "iz99bb68"
 
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
 
+# --- PROFESSIONAL UI: JOIN BUTTON ---
 class JoinButton(discord.ui.View):
     def __init__(self, join_code):
         super().__init__()
-        # PlaceID from your screenshot
+        # Direct link to launch Roblox and join the private server
         url = f"https://www.roblox.com/games/start?placeId=7711635737&launchData=joinCode%3D{join_code}"
-        self.add_item(discord.ui.Button(label='Join Server', url=url, emoji='🔗', style=discord.ButtonStyle.link))
+        self.add_item(discord.ui.Button(
+            label='Join Server', 
+            url=url, 
+            emoji='🎮', 
+            style=discord.ButtonStyle.link
+        ))
 
 @bot.event
 async def on_ready():
-    print(f"Logged in as {bot.user}. Updating status...")
+    print(f"Logged in as {bot.user}. Updating ABR Status...")
     try:
-        # 1. Get Roblox Data
+        # 1. Fetch Roblox Data
         response = requests.get("https://api.emergency-hamburg.com/public/servers", timeout=10)
         all_servers = response.json()
         target = next((s for s in all_servers if MY_SERVER_ID in s.get('privateServerId', '')), None)
@@ -34,42 +41,48 @@ async def on_ready():
             players = target.get('currentPlayers', 0)
             max_p = target.get('maxPlayers', 44)
             owner = target.get('ownerName', 'medo230y')
-            code = "iz99bb68" # Your updated code
+            owner_id = target.get('ownerId', '1')
 
-            # 2. Build the Embed
+            # 2. Build the Professional Embed
             embed = discord.Embed(
-                title="🚨 BORDER RP 🚧 🇺🇸", 
-                description="**Serious Roleplay Community**",
-                color=0x2ecc71 
+                title="🛡️ ABR BORDER ROLEPLAY 🇺🇸", 
+                description=">>> **Welcome to the Border.** \n*Serious Roleplay & Community Events*",
+                color=0x2ecc71 # Emerald Green
             )
             
-            embed.add_field(name="📶 Status", value="🟢 **Online**", inline=True)
-            embed.add_field(name="🎮 Players", value=f"`{players} / {max_p}`", inline=True)
-            embed.add_field(name="👑 Owner", value=f"[{owner}](https://www.roblox.com/users/{target.get('ownerId')}/profile)", inline=False)
-            embed.add_field(name="🔑 Join Code", value=f"`{code}`", inline=False)
+            # Row 1
+            embed.add_field(name="📶 Server Status", value="🟢 `Active`", inline=True)
+            embed.add_field(name="👥 Population", value=f"```css\n{players} / {max_p}\n```", inline=True)
             
-            # Dynamic Timestamp (Shows "5 minutes ago")
+            # Row 2
+            embed.add_field(name="👑 Community Owner", value=f"[{owner}](https://www.roblox.com/users/{owner_id}/profile)", inline=True)
+            embed.add_field(name="🔑 Private Code", value=f"`{JOIN_CODE}`", inline=True)
+            
+            # Row 3 (Full Width)
             sync_time = int(time.time())
-            embed.add_field(name="🕒 Last Sync", value=f"<t:{sync_time}:R>", inline=False)
+            embed.add_field(name="🕒 Real-Time Sync", value=f"Updated <t:{sync_time}:R>", inline=False)
             
-            if target.get('ownerProfileUrl'):
-                embed.set_thumbnail(url=target.get('ownerProfileUrl'))
+            # Visuals
+            embed.set_thumbnail(url="https://i.imgur.com/8E89XG1.png") 
 
-            embed.set_footer(text="ABR Development • Real-Time Monitor", icon_url=target.get('ownerProfileUrl'))
+            # YOUR NEW FOOTER
+            embed.set_footer(
+                text="Bot made for ABR • Developed by Youssef", 
+                icon_url="https://cdn-icons-png.flaticon.com/512/6840/6840478.png"
+            )
 
-            # 3. Update Discord
+            # 3. Update Discord Message
             channel = bot.get_channel(CHANNEL_ID)
-            msg = await channel.fetch_message(MESSAGE_ID)
-            await msg.edit(content=None, embed=embed, view=JoinButton(code))
-            print("Update Successful!")
+            if channel:
+                msg = await channel.fetch_message(MESSAGE_ID)
+                await msg.edit(content=None, embed=embed, view=JoinButton(JOIN_CODE))
+                print("✅ Update Successful!")
         else:
-            print("Server not found. Is it offline?")
+            print("❌ Server not found.")
             
     except Exception as e:
-        print(f"Error occurred: {e}")
+        print(f"🔥 Error: {e}")
     
-    # 4. Force Close (Crucial for GitHub Actions)
     await bot.close()
 
-# Start the bot
 bot.run(TOKEN)
