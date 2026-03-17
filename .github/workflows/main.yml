@@ -2,7 +2,10 @@ name: Update Bot
 
 on:
   schedule:
-    - cron: '*/5 * * * *'
+    # This tries to run at :00, :05, :10...
+    - cron: '0,5,10,15,20,25,30,35,40,45,50,55 * * * *'
+    # This adds extra tries at :02, :07, :12... to beat the delay
+    - cron: '2,7,12,17,22,27,32,37,42,47,52,57 * * * *'
   workflow_dispatch:
 
 env:
